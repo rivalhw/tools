@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线自动排版编辑器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        #editor {
+            width: 80%;
+            height: 30%;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            line-height: 1.5;
+            resize: none;
+        }
+        #formatted {
+            width: 80%;
+            height: 30%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            overflow-y: auto;
+        }
+        #formatted p {
+            text-indent: 2em; /* 首行缩进2em */
+            margin: 1em 0; /* 段前空1行 */
+        }
+        #formatted img {
+            max-width: 100%; /* 图片最大宽度不超过容器宽度 */
+            height: auto; /* 保持图片比例 */
+        }
+        #buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <textarea id="editor" placeholder="在此输入文本..."></textarea>
+    <div id="buttons">
+        <button id="formatButton">自动排版</button>
+        <button id="copyButton">一键复制</button>
+        <button id="clearButton">清空</button>
+        <button id="previewButton">在线预览</button>
+        <button id="wordCountButton">字数统计</button>
+    </div>
+    <div id="formatted"></div>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        document.getElementById('formatButton').addEventListener('click', () => {
+            const editorContent = document.getElementById('editor').value;
+            const formattedContent = marked.parse(editorContent);
+            document.getElementById('formatted').innerHTML = formattedContent;
+        });
+
+        document.getElementById('copyButton').addEventListener('click', () => {
+            const formattedContent = document.getElementById('formatted').innerText;
+            navigator.clipboard.writeText(formattedContent).then(() => {
+                alert('复制成功！');
+            });
+        });
+
+        document.getElementById('clearButton').addEventListener('click', () => {
+            document.getElementById('editor').value = '';
+            document.getElementById('formatted').innerHTML = '';
+        });
+
+        document.getElementById('previewButton').addEventListener('click', () => {
+            const previewWindow = window.open('', '_blank');
+            previewWindow.document.write(document.getElementById('formatted').innerHTML);
+            previewWindow.document.close();
+        });
+
+        document.getElementById('wordCountButton').addEventListener('click', () => {
+            const editorContent = document.getElementById('editor').value;
+            const wordCount = editorContent.replace(/\s/g, '').length;
+            alert(`字数统计：${wordCount}`);
+        });
+    </script>
+</body>
+</html>
