@@ -24,7 +24,6 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
-            line-height: 1.5;
             resize: none;
         }
         #formatted {
@@ -39,6 +38,7 @@
         #formatted p {
             text-indent: 2em; /* 首行缩进2em */
             margin: 1em 0; /* 段前空1行 */
+            line-height: 1.5; /* 设置行间距为1.5 */
         }
         #formatted img {
             max-width: 100%; /* 图片最大宽度不超过容器宽度 */
@@ -78,7 +78,14 @@
         document.getElementById('formatButton').addEventListener('click', () => {
             const editorContent = document.getElementById('editor').value;
             const formattedContent = marked.parse(editorContent);
-            document.getElementById('formatted').innerHTML = formattedContent;
+            const formattedDiv = document.getElementById('formatted');
+            formattedDiv.innerHTML = formattedContent;
+
+            // 设置所有子元素的行间距为1.5
+            const paragraphs = formattedDiv.querySelectorAll('p');
+            paragraphs.forEach(p => {
+                p.style.lineHeight = '1.5';
+            });
         });
 
         document.getElementById('copyButton').addEventListener('click', () => {
