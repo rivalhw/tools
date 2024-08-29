@@ -6,7 +6,8 @@ autotypesetting.html 在线自动排版编辑器
 
 AirplaneShootingGame.py 太空大战游戏
 我方战斗机图标
-[![player-fighter.png](https://i.postimg.cc/6q6QCq3G/player-fighter.png)](https://postimg.cc/9RSVhWyW)
+<img src="https://i.postimg.cc/6q6QCq3G/player-fighter.png" alt="player-fighter" width="120" height="120">
 
-地方战斗机图标
-[![enemy-fighter.png](https://i.postimg.cc/76wPyhSQ/enemy-fighter.png)](https://postimg.cc/TyNvVR7r)
+敌方战斗机图标
+<img src="https://i.postimg.cc/76wPyhSQ/enemy-fighter.png" alt="enemy-fighter" width="120" height="120">
+
