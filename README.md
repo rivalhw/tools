@@ -4,7 +4,14 @@ imagesbatch.py  批处理图像
 
 autotypesetting.html 在线自动排版编辑器
 
+
 AirplaneShootingGame.py 太空大战游戏
+
+A fun airplane shooting game designed for children, featuring both friendly and enemy fighter jets. The player controls the movement of their jet left and right using the cursor, and missiles are fired with the spacebar. The game ends if the player is hit by enemy fire or collides with an enemy jet.
+
+一款适合儿童娱乐的打飞机游戏，分为我方和敌方战机，控制光标左右移动战机，空格键发射导弹，被敌方击中或被撞则游戏结束。
+
+
 
 我方战斗机图标
 <img src="https://i.postimg.cc/6q6QCq3G/player-fighter.png" alt="player-fighter" width="120" height="120">
