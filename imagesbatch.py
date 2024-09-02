@@ -3,6 +3,7 @@ from PIL import Image, ExifTags
 from datetime import datetime
 import concurrent.futures
 import time
+from PIL import Image, ExifTags, ImageDraw
 
 # 定义处理图片的函数
 def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024, month='', day='', counter=1):
@@ -38,6 +39,25 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
                 new_width = max_width
                 new_height = int(original_height * scale_factor)
                 img = img.resize((new_width, new_height), Image.LANCZOS)
+
+                
+            # 添加相框边框效果
+            border_width = int(min(img.size) * 0.02)  # 边框宽度为图片较短边的3%
+            border_color = (255, 255, 255)  # 白色边框
+            
+            # 创建新的图像，比原图大一圈边框
+            new_size = (img.width + 2*border_width, img.height + 2*border_width)
+            framed_img = Image.new('RGB', new_size, border_color)
+            
+            # 在新图像中央粘贴原图
+            framed_img.paste(img, (border_width, border_width))
+            
+            # 在白色边框外再加一个细黑色边框
+            draw = ImageDraw.Draw(framed_img)
+            draw.rectangle([0, 0, new_size[0]-1, new_size[1]-1], outline=(0,0,0), width=1)
+            
+            # 更新img为添加了边框的图像
+            img = framed_img
 
             # 生成新的文件名
             new_filename = f"{month}_{day}_{counter:03d}.jpg"
