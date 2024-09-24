@@ -3,7 +3,7 @@ from PIL import Image, ExifTags
 from datetime import datetime
 import concurrent.futures
 import time
-from PIL import Image, ExifTags, ImageDraw
+from PIL import ImageDraw
 
 # 定义处理图片的函数
 def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024, month='', day='', counter=1):
@@ -28,7 +28,6 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
                     elif orientation == 8:
                         img = img.rotate(90, expand=True)
             except (AttributeError, KeyError, IndexError):
-                # 如果没有EXIF信息或无法读取方向信息，忽略处理
                 pass
 
             # 获取原始尺寸
@@ -40,7 +39,6 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
                 new_height = int(original_height * scale_factor)
                 img = img.resize((new_width, new_height), Image.LANCZOS)
 
-                
             # 添加相框边框效果
             border_width = int(min(img.size) * 0.02)  # 边框宽度为图片较短边的3%
             border_color = (255, 255, 255)  # 白色边框
@@ -56,12 +54,10 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
             draw = ImageDraw.Draw(framed_img)
             draw.rectangle([0, 0, new_size[0]-1, new_size[1]-1], outline=(0,0,0), width=1)
             
-            # 更新img为添加了边框的图像
             img = framed_img
 
             # 生成新的文件名
             new_filename = f"{month}_{day}_{counter:03d}.jpg"
-            # 保存图片到输出文件夹，并控制文件大小
             output_path = os.path.join(output_folder, new_filename)
             img.save(output_path, format='JPEG', quality=95, optimize=True)
 
@@ -82,7 +78,6 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
 # 主函数，获取用户输入的文件夹路径
 def main():
     input_folder = input("请输入要处理的图片文件夹路径: ")
-    # 获取当前日期，并格式化为字符串
     current_date = datetime.now().strftime('%Y-%m-%d')
     current_month = datetime.now().strftime('%m')
     current_day = datetime.now().strftime('%d')
@@ -95,14 +90,13 @@ def main():
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    # 获取所有待处理的图片文件
-    image_files = [os.path.join(input_folder, f) for f in os.listdir(input_folder)
-                   if f.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'bmp'))]
+    # 获取所有待处理的图片文件并按文件名排序
+    image_files = sorted([os.path.join(input_folder, f) for f in os.listdir(input_folder)
+                   if f.lower().endswith(('png', 'jpg', 'jpeg', 'gif', 'bmp'))])
 
     success_count = 0
     fail_count = 0
 
-    # 记录开始时间
     start_time = time.time()
 
     # 使用多线程处理图片
@@ -114,7 +108,6 @@ def main():
             else:
                 fail_count += 1
 
-    # 记录结束时间
     end_time = time.time()
     elapsed_time = end_time - start_time
 
