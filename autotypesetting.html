@@ -34,15 +34,18 @@
             border-radius: 5px;
             background-color: #fff;
             overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
         }
         #formatted p {
-            text-indent: 2em; /* 首行缩进2em */
-            margin: 1em 0; /* 段前空1行 */
-            line-height: 1.5; /* 设置行间距为1.5 */
+            text-indent: 2em;
+            margin: 1em 0;
+            line-height: 1.5;
         }
         #formatted img {
-            max-width: 100%; /* 图片最大宽度不超过容器宽度 */
-            height: auto; /* 保持图片比例 */
+            max-width: 100%;
+            height: auto;
         }
         #buttons {
             display: flex;
@@ -71,6 +74,7 @@
         <button id="clearButton">清空</button>
         <button id="previewButton">在线预览</button>
         <button id="wordCountButton">字数统计</button>
+        <button id="curlToPythonButton">Curl转Python</button>
     </div>
     <div id="formatted"></div>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -111,6 +115,93 @@
             const wordCount = editorContent.replace(/\s/g, '').length;
             alert(`字数统计：${wordCount}`);
         });
+
+        document.getElementById('curlToPythonButton').addEventListener('click', () => {
+            const curlCommand = document.getElementById('editor').value;
+            
+            // 简单的curl命令转换为Python代码
+            let pythonCode = 'import requests\n\n';
+            
+            // 提取URL
+            const urlMatch = curlCommand.match(/'([^']*)'|"([^"]*)"|(?:https?:\/\/[^\s]+)/);
+            const url = urlMatch ? urlMatch[0].replace(/['"]$/, '').replace(/^['"]/, '') : '';
+            
+            // 提取方法（默认为GET）
+            const method = curlCommand.includes('-X') ? 
+                curlCommand.match(/-X\s+([^\s]+)/)[1] : 'GET';
+            
+            // 提取headers
+            const headers = {};
+            const headerMatches = curlCommand.matchAll(/-H\s+['"]([^'"]+)['"]/g);
+            for (const match of headerMatches) {
+                const [key, value] = match[1].split(': ');
+                headers[key] = value;
+            }
+            
+            // 提取data
+            const dataMatch = curlCommand.match(/-d\s+['"]([^'"]+)['"]/);
+            const data = dataMatch ? dataMatch[1] : null;
+            
+            // 构建Python代码
+            pythonCode += `url = '${url}'\n`;
+            if (Object.keys(headers).length > 0) {
+                pythonCode += `headers = ${JSON.stringify(headers, null, 4)}\n`;
+            }
+            if (data) {
+                pythonCode += `data = '${data}'\n`;
+            }
+            
+            pythonCode += `\nresponse = requests.${method.toLowerCase()}(url`;
+            if (Object.keys(headers).length > 0) {
+                pythonCode += ', headers=headers';
+            }
+            if (data) {
+                pythonCode += ', data=data';
+            }
+            pythonCode += ')\n';
+            pythonCode += 'print(response.text)\n';
+            
+            document.getElementById('formatted').innerHTML = `<pre>${pythonCode}</pre>`;
+        });
     </script>
+    <button id="copyButton" onclick="copyPythonCode()" style="padding: 10px 20px; font-size: 16px; color: #fff; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">复制代码</button>
 </body>
 </html>
+<script>
+    function copyPythonCode() {
+        // 获取格式化后的代码内容
+        const formattedDiv = document.getElementById('formatted');
+        const pythonCode = formattedDiv.querySelector('pre').textContent;
+        
+        // 创建临时textarea元素
+        const textarea = document.createElement('textarea');
+        textarea.value = pythonCode;
+        document.body.appendChild(textarea);
+        
+        // 选择并复制文本
+        textarea.select();
+        document.execCommand('copy');
+        
+        // 移除临时元素
+        document.body.removeChild(textarea);
+        
+        // 提示用户已复制
+        alert('Python代码已复制到剪贴板!');
+    }
+
+    // 在生成Python代码后添加复制按钮
+    document.getElementById('curlToPythonButton').addEventListener('click', () => {
+        // 等待代码生成完成后添加复制按钮
+        setTimeout(() => {
+            const formattedDiv = document.getElementById('formatted');
+            if(!document.getElementById('copyButton')) {
+                const copyButton = document.createElement('button');
+                copyButton.id = 'copyButton';
+                copyButton.textContent = '复制代码';
+                copyButton.style.marginTop = '10px';
+                copyButton.onclick = copyPythonCode;
+                formattedDiv.appendChild(copyButton);
+            }
+        }, 100);
+    });
+</script>
