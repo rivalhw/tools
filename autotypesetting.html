@@ -40,12 +40,22 @@
         }
         #formatted p {
             text-indent: 2em;
-            margin: 1em 0;
+            margin: 0.5em 0;
             line-height: 1.5;
         }
         #formatted img {
             max-width: 100%;
             height: auto;
+        }
+        #formatted h1, #formatted h2, #formatted h3, 
+        #formatted h4, #formatted h5, #formatted h6 {
+            margin: 0.8em 0 0.4em 0;
+        }
+        #formatted ul, #formatted ol {
+            margin: 0.5em 0;
+        }
+        #formatted li {
+            margin: 0.2em 0;
         }
         #buttons {
             display: flex;
@@ -119,14 +129,14 @@
         document.getElementById('curlToPythonButton').addEventListener('click', () => {
             const curlCommand = document.getElementById('editor').value;
             
-            // 简单的curl命令转换为Python代码
+            // 基础设置
             let pythonCode = 'import requests\n\n';
             
             // 提取URL
             const urlMatch = curlCommand.match(/'([^']*)'|"([^"]*)"|(?:https?:\/\/[^\s]+)/);
             const url = urlMatch ? urlMatch[0].replace(/['"]$/, '').replace(/^['"]/, '') : '';
             
-            // 提取方法（默认为GET）
+            // 提取方法
             const method = curlCommand.includes('-X') ? 
                 curlCommand.match(/-X\s+([^\s]+)/)[1] : 'GET';
             
@@ -138,11 +148,31 @@
                 headers[key] = value;
             }
             
+            // 改进的cookie提取和处理
+            const cookieMatch = curlCommand.match(/--cookie\s+['"]([^'"]+)['"]/);
+            let cookies = null;
+            if (cookieMatch) {
+                try {
+                    // 将完整的cookie字符串保存为原始格式
+                    cookies = cookieMatch[1];
+                    pythonCode += `cookies = '${cookies}'\n`;
+                    pythonCode += `# 将cookies字符串转换为字典\n`;
+                    pythonCode += `cookie_dict = {}\n`;
+                    pythonCode += `for cookie in cookies.split(';'):\n`;
+                    pythonCode += `    if '=' in cookie:\n`;
+                    pythonCode += `        key, value = cookie.strip().split('=', 1)\n`;
+                    pythonCode += `        cookie_dict[key] = value\n\n`;
+                } catch (e) {
+                    console.error('处理cookie时出错:', e);
+                    cookies = null;
+                }
+            }
+            
             // 提取data
             const dataMatch = curlCommand.match(/-d\s+['"]([^'"]+)['"]/);
             const data = dataMatch ? dataMatch[1] : null;
             
-            // 构建Python代码
+            // 构建请求代码
             pythonCode += `url = '${url}'\n`;
             if (Object.keys(headers).length > 0) {
                 pythonCode += `headers = ${JSON.stringify(headers, null, 4)}\n`;
@@ -151,9 +181,13 @@
                 pythonCode += `data = '${data}'\n`;
             }
             
+            // 构建requests调用
             pythonCode += `\nresponse = requests.${method.toLowerCase()}(url`;
             if (Object.keys(headers).length > 0) {
                 pythonCode += ', headers=headers';
+            }
+            if (cookies) {
+                pythonCode += ', cookies=cookie_dict';
             }
             if (data) {
                 pythonCode += ', data=data';
