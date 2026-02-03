@@ -1,9 +1,9 @@
 import os
-from PIL import Image, ExifTags, ImageFont
+from PIL import Image, ExifTags
 from datetime import datetime
 import concurrent.futures
 import time
-from PIL import ImageDraw
+from PIL import ImageDraw, ImageFont
 
 # 定义处理图片的函数
 def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024, month='', day='', counter=1):
@@ -39,8 +39,8 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
                 new_height = int(original_height * scale_factor)
                 img = img.resize((new_width, new_height), Image.LANCZOS)
 
-            # 添加相框边框效果 - 改进版
-            border_width = int(min(img.size) * 0.008)  # 边框宽度为0.8%，更加细腻
+            # 添加相框边框效果
+            border_width = int(min(img.size) * 0.02)  # 边框宽度为图片较短边的3%
             border_color = (255, 255, 255)  # 白色边框
             
             # 创建新的图像，比原图大一圈边框
@@ -50,46 +50,43 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
             # 在新图像中央粘贴原图
             framed_img.paste(img, (border_width, border_width))
             
-            # 创建高质量的边框：细线形成更精致的效果
+            # 在白色边框外再加一个细黑色边框
             draw = ImageDraw.Draw(framed_img)
-            # 外层细灰色边框
-            draw.rectangle([0, 0, new_size[0]-1, new_size[1]-1], outline=(210, 210, 210), width=1)
-            # 内层超细灰色边框
-            draw.rectangle([border_width-1, border_width-1, new_size[0]-border_width, new_size[1]-border_width], 
-                          outline=(190, 190, 190), width=1)
+            draw.rectangle([0, 0, new_size[0]-1, new_size[1]-1], outline=(0,0,0), width=1)
             
-            # 添加水印 - 浅色文字 "@rivalhw" 在右下角
-            watermark_text = "@rivalhw"
-            # 计算字体大小（相对于图片宽度）
-            font_size = int(min(framed_img.size) * 0.04)  # 字体大小为图片较小边的4%
+            # 添加水印
+            text = "@rivalhw"
             try:
-                # 尝试使用系统字体，如果失败则使用默认字体
-                font = ImageFont.truetype("arial.ttf", font_size)
-            except:
+                # 尝试加载字体，设置大小为图片高度的 4%
+                font_size = int(new_size[1] * 0.04)
+                if font_size < 20: font_size = 20
+                try:
+                    font = ImageFont.truetype("arialbd.ttf", font_size)
+                except IOError:
+                    font = ImageFont.truetype("arial.ttf", font_size)
+            except IOError:
                 font = ImageFont.load_default()
             
-            # 获取文字大小以计算位置
-            bbox = draw.textbbox((0, 0), watermark_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
+            # 获取文本大小
+            try:
+                left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+                text_width = right - left
+                text_height = bottom - top
+            except AttributeError:
+                text_width, text_height = draw.textsize(text, font=font)
             
-            # 计算水印位置（右下角，留出一定距离）
-            margin = border_width + 10
+            # 计算位置：右下角，距离边缘一定的距离
+            margin = int(new_size[0] * 0.01) + 5
             x = new_size[0] - text_width - margin
             y = new_size[1] - text_height - margin
             
-            # 绘制半透明水印（使用较浅的灰色）
-            watermark_color = (200, 200, 200)  # 浅灰色
-            draw.text((x, y), watermark_text, fill=watermark_color, font=font)
+            # 绘制文字，使用黑色
+            draw.text((x, y), text, font=font, fill=(0, 0, 0))
             
             img = framed_img
 
-            # 若源文件名以 IMG 开头则保持原文件名，否则按日期+序号命名
-            if filename.upper().startswith('IMG'):
-                name_without_ext = os.path.splitext(filename)[0]
-                new_filename = name_without_ext + '.jpg'
-            else:
-                new_filename = f"{month}_{day}_{counter:03d}.jpg"
+            # 生成新的文件名
+            new_filename = f"{month}_{day}_{counter:03d}.jpg"
             output_path = os.path.join(output_folder, new_filename)
             img.save(output_path, format='JPEG', quality=95, optimize=True)
 

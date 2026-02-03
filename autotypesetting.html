@@ -5,237 +5,487 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>在线自动排版编辑器</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .editor-section, .preview-section {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #f5f5f5;
+        }
+        .editor-section label, .preview-section label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
         #editor {
-            width: 80%;
-            height: 30%;
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-            resize: none;
+            width: 100%;
+            height: 400px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        #editor:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
         }
         #formatted {
-            width: 80%;
-            height: 30%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #fff;
+            width: 100%;
+            height: 400px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fafafa;
             overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: monospace;
-            font-size: 14px;
+            line-height: 1.6;
         }
         #formatted p {
             text-indent: 2em;
-            margin: 0.5em 0;
-            line-height: 1.5;
+            margin: 0.8em 0;
+            color: #333;
+        }
+        #formatted pre {
+            background-color: #f5f5f5;
+            padding: 12px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
         }
         #formatted img {
             max-width: 100%;
             height: auto;
+            margin: 10px 0;
+            border-radius: 5px;
         }
         #formatted h1, #formatted h2, #formatted h3, 
         #formatted h4, #formatted h5, #formatted h6 {
-            margin: 0.8em 0 0.4em 0;
+            margin: 1em 0 0.5em 0;
+            color: #333;
         }
+        #formatted h1 { font-size: 24px; color: #667eea; }
+        #formatted h2 { font-size: 20px; }
+        #formatted h3 { font-size: 18px; }
         #formatted ul, #formatted ol {
-            margin: 0.5em 0;
+            margin: 0.8em 0;
+            padding-left: 2em;
         }
         #formatted li {
-            margin: 0.2em 0;
+            margin: 0.4em 0;
         }
         #buttons {
-            display: flex;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
             margin-bottom: 20px;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
             color: #fff;
-            background-color: #007bff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         button:hover {
-            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .info-bar {
+            background-color: #f0f0f0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .info-bar span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .success {
+            background-color: #27ae60;
+        }
+        .error {
+            background-color: #e74c3c;
+        }
+        @media (max-width: 1024px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <textarea id="editor" placeholder="在此输入文本..."></textarea>
-    <div id="buttons">
-        <button id="formatButton">自动排版</button>
-        <button id="copyButton">一键复制</button>
-        <button id="clearButton">清空</button>
-        <button id="previewButton">在线预览</button>
-        <button id="wordCountButton">字数统计</button>
-        <button id="curlToPythonButton">Curl转Python</button>
+    <div class="container">
+        <div class="header">
+            <h1>📝 在线自动排版编辑器</h1>
+            <p>强大的文本处理工具集，支持Markdown、字数统计、Curl转Python等多种功能</p>
+        </div>
+        
+        <div class="info-bar">
+            <span>📊 实时统计：</span>
+            <span>字数: <strong id="charCount">0</strong> | 行数: <strong id="lineCount">0</strong></span>
+            <span style="margin-left: auto;">💡 Tip: 输入内容会实时更新统计数据</span>
+        </div>
+        
+        <div id="buttons"></div>
+        
+        <div class="content">
+            <div class="editor-section">
+                <label for="editor">📥 输入区域</label>
+                <textarea id="editor" placeholder="在此输入文本、Markdown、或Curl命令..."></textarea>
+            </div>
+            <div class="preview-section">
+                <label for="formatted">📤 输出/预览区域</label>
+                <div id="formatted"></div>
+            </div>
+        </div>
     </div>
-    <div id="formatted"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-        document.getElementById('formatButton').addEventListener('click', () => {
-            const editorContent = document.getElementById('editor').value;
-            const formattedContent = marked.parse(editorContent);
+        // 初始化按钮
+        const buttons = [
+            { id: 'formatButton', text: '✨ Markdown 排版', action: formatMarkdown },
+            { id: 'copyButton', text: '📋 一键复制', action: copyContent },
+            { id: 'clearButton', text: '🗑️ 清空所有', action: clearAll },
+            { id: 'previewButton', text: '👁️ 新窗口预览', action: previewInWindow },
+            { id: 'wordCountButton', text: '📊 详细统计', action: showDetailedStats },
+            { id: 'curlToPythonButton', text: '🔄 Curl转Python', action: curlToPython }
+        ];
+
+        const buttonsContainer = document.getElementById('buttons');
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.id = btn.id;
+            button.textContent = btn.text;
+            button.addEventListener('click', btn.action);
+            buttonsContainer.appendChild(button);
+        });
+
+        // 实时统计功能
+        const editor = document.getElementById('editor');
+        editor.addEventListener('input', updateStats);
+
+        function updateStats() {
+            const text = editor.value;
+            const charCount = text.length;
+            const lineCount = text.split('\n').length;
+            document.getElementById('charCount').textContent = charCount;
+            document.getElementById('lineCount').textContent = lineCount;
+        }
+
+        // 显示提示信息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // 1. Markdown 排版功能 - 增强版
+        function formatMarkdown() {
+            const editorContent = editor.value;
+            if (!editorContent.trim()) {
+                showToast('⚠️ 请先输入内容！', 'error');
+                return;
+            }
+
+            try {
+                const formattedContent = marked.parse(editorContent);
+                const formattedDiv = document.getElementById('formatted');
+                formattedDiv.innerHTML = formattedContent;
+                showToast('✓ Markdown 排版成功！');
+            } catch (error) {
+                showToast('✗ 排版失败: ' + error.message, 'error');
+            }
+        }
+
+        // 2. 一键复制功能 - 增强版
+        function copyContent() {
             const formattedDiv = document.getElementById('formatted');
-            formattedDiv.innerHTML = formattedContent;
+            let contentToCopy = '';
 
-            // 设置所有子元素的行间距为1.5
-            const paragraphs = formattedDiv.querySelectorAll('p');
-            paragraphs.forEach(p => {
-                p.style.lineHeight = '1.5';
-            });
-        });
-
-        document.getElementById('copyButton').addEventListener('click', () => {
-            const formattedContent = document.getElementById('formatted').innerText;
-            navigator.clipboard.writeText(formattedContent).then(() => {
-                alert('复制成功！');
-            });
-        });
-
-        document.getElementById('clearButton').addEventListener('click', () => {
-            document.getElementById('editor').value = '';
-            document.getElementById('formatted').innerHTML = '';
-        });
-
-        document.getElementById('previewButton').addEventListener('click', () => {
-            const previewWindow = window.open('', '_blank');
-            previewWindow.document.write(document.getElementById('formatted').innerHTML);
-            previewWindow.document.close();
-        });
-
-        document.getElementById('wordCountButton').addEventListener('click', () => {
-            const editorContent = document.getElementById('editor').value;
-            const wordCount = editorContent.replace(/\s/g, '').length;
-            alert(`字数统计：${wordCount}`);
-        });
-
-        document.getElementById('curlToPythonButton').addEventListener('click', () => {
-            const curlCommand = document.getElementById('editor').value;
-            
-            // 基础设置
-            let pythonCode = 'import requests\n\n';
-            
-            // 提取URL
-            const urlMatch = curlCommand.match(/'([^']*)'|"([^"]*)"|(?:https?:\/\/[^\s]+)/);
-            const url = urlMatch ? urlMatch[0].replace(/['"]$/, '').replace(/^['"]/, '') : '';
-            
-            // 提取方法
-            const method = curlCommand.includes('-X') ? 
-                curlCommand.match(/-X\s+([^\s]+)/)[1] : 'GET';
-            
-            // 提取headers
-            const headers = {};
-            const headerMatches = curlCommand.matchAll(/-H\s+['"]([^'"]+)['"]/g);
-            for (const match of headerMatches) {
-                const [key, value] = match[1].split(': ');
-                headers[key] = value;
+            // 复制HTML内容或纯文本
+            if (formattedDiv.innerHTML.includes('<pre>')) {
+                // 如果是代码块，复制代码内容
+                const codeElement = formattedDiv.querySelector('pre');
+                contentToCopy = codeElement ? codeElement.textContent : formattedDiv.innerText;
+            } else if (formattedDiv.innerHTML) {
+                // 复制渲染后的文本
+                contentToCopy = formattedDiv.innerText;
+            } else {
+                showToast('⚠️ 没有内容可复制！', 'error');
+                return;
             }
-            
-            // 改进的cookie提取和处理
-            const cookieMatch = curlCommand.match(/--cookie\s+['"]([^'"]+)['"]/);
-            let cookies = null;
-            if (cookieMatch) {
-                try {
-                    // 将完整的cookie字符串保存为原始格式
-                    cookies = cookieMatch[1];
-                    pythonCode += `cookies = '${cookies}'\n`;
-                    pythonCode += `# 将cookies字符串转换为字典\n`;
-                    pythonCode += `cookie_dict = {}\n`;
-                    pythonCode += `for cookie in cookies.split(';'):\n`;
-                    pythonCode += `    if '=' in cookie:\n`;
-                    pythonCode += `        key, value = cookie.strip().split('=', 1)\n`;
-                    pythonCode += `        cookie_dict[key] = value\n\n`;
-                } catch (e) {
-                    console.error('处理cookie时出错:', e);
-                    cookies = null;
+
+            navigator.clipboard.writeText(contentToCopy).then(() => {
+                showToast('✓ 复制成功！');
+            }).catch(() => {
+                showToast('✗ 复制失败，请手动复制', 'error');
+            });
+        }
+
+        // 3. 清空所有功能 - 增强版
+        function clearAll() {
+            if (editor.value.trim() || document.getElementById('formatted').innerHTML) {
+                if (confirm('确定要清空所有内容吗？')) {
+                    editor.value = '';
+                    document.getElementById('formatted').innerHTML = '';
+                    updateStats();
+                    showToast('✓ 已清空所有内容');
                 }
+            } else {
+                showToast('⚠️ 没有内容可清空', 'error');
             }
-            
-            // 提取data
-            const dataMatch = curlCommand.match(/-d\s+['"]([^'"]+)['"]/);
-            const data = dataMatch ? dataMatch[1] : null;
-            
-            // 构建请求代码
-            pythonCode += `url = '${url}'\n`;
-            if (Object.keys(headers).length > 0) {
-                pythonCode += `headers = ${JSON.stringify(headers, null, 4)}\n`;
+        }
+
+        // 4. 新窗口预览功能 - 增强版
+        function previewInWindow() {
+            const formattedDiv = document.getElementById('formatted');
+            if (!formattedDiv.innerHTML.trim()) {
+                showToast('⚠️ 没有内容可预览！', 'error');
+                return;
             }
-            if (data) {
-                pythonCode += `data = '${data}'\n`;
+
+            const previewWindow = window.open('', '_blank');
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>预览</title>
+                    <style>
+                        body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+                        p { text-indent: 2em; margin: 1em 0; }
+                        h1, h2, h3 { margin-top: 1.5em; margin-bottom: 0.5em; }
+                        h1 { color: #667eea; }
+                        code { background-color: #f5f5f5; padding: 2px 5px; border-radius: 3px; }
+                        pre { background-color: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto; }
+                        img { max-width: 100%; border-radius: 5px; }
+                    </style>
+                </head>
+                <body>
+                    ${formattedDiv.innerHTML}
+                </body>
+                </html>
+            `;
+            previewWindow.document.write(htmlContent);
+            previewWindow.document.close();
+            showToast('✓ 预览窗口已打开');
+        }
+
+        // 5. 详细统计功能 - 增强版
+        function showDetailedStats() {
+            const text = editor.value;
+            if (!text.trim()) {
+                showToast('⚠️ 请先输入内容！', 'error');
+                return;
             }
-            
-            // 构建requests调用
-            pythonCode += `\nresponse = requests.${method.toLowerCase()}(url`;
-            if (Object.keys(headers).length > 0) {
-                pythonCode += ', headers=headers';
+
+            const stats = {
+                总字符数: text.length,
+                总行数: text.split('\n').length,
+                字数: text.replace(/\s/g, '').length,
+                单词数: text.trim().split(/\s+/).length,
+                空格数: (text.match(/\s/g) || []).length,
+                中文字符数: (text.match(/[\u4e00-\u9fff]/g) || []).length,
+                英文字符数: (text.match(/[a-zA-Z]/g) || []).length,
+                数字个数: (text.match(/[0-9]/g) || []).length,
+                标点符号数: (text.match(/[，。！？；：""''（）【】…—·]/g) || []).length
+            };
+
+            let statsHtml = '<style>body { font-family: Arial, sans-serif; padding: 30px; max-width: 500px; margin: 50px auto; } h1 { color: #667eea; } .stat-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; } .stat-item strong { color: #333; } .stat-value { color: #667eea; font-weight: bold; }</style>';
+            statsHtml += '<h1>📊 统计详情</h1>';
+            Object.entries(stats).forEach(([key, value]) => {
+                statsHtml += `<div class="stat-item"><strong>${key}:</strong><span class="stat-value">${value}</span></div>`;
+            });
+
+            const statsWindow = window.open('', '_blank');
+            statsWindow.document.write(`<html><head><meta charset="UTF-8"></head><body>${statsHtml}</body></html>`);
+            statsWindow.document.close();
+            showToast('✓ 统计窗口已打开');
+        }
+
+        // 6. Curl转Python功能 - 增强版
+        function curlToPython() {
+            const curlCommand = editor.value.trim();
+            if (!curlCommand) {
+                showToast('⚠️ 请输入 curl 命令！', 'error');
+                return;
             }
-            if (cookies) {
-                pythonCode += ', cookies=cookie_dict';
+
+            try {
+                let pythonCode = 'import requests\nimport json\n\n';
+
+                // 提取URL - 改进的正则
+                const urlMatch = curlCommand.match(/(?:curl\s+)?(?:-[a-zA-Z]*\s+)*['"]?([^'"\s]+(?:https?:\/\/)[^'"\s]*)['"]?/);
+                const url = urlMatch ? urlMatch[1].replace(/['"`]/g, '') : 'https://example.com';
+
+                // 提取方法
+                const method = curlCommand.includes('-X') ? 
+                    curlCommand.match(/-X\s+([^\s]+)/)[1].toUpperCase() : 
+                    curlCommand.includes('--data') || curlCommand.includes('-d') ? 'POST' : 'GET';
+
+                // 提取headers
+                const headers = {};
+                const headerRegex = /-H\s+['"]?([^'"]+?)['"]?(?=\s+-|$)/g;
+                let headerMatch;
+                while ((headerMatch = headerRegex.exec(curlCommand)) !== null) {
+                    const [key, value] = headerMatch[1].split(': ');
+                    if (key && value) {
+                        headers[key.trim()] = value.trim();
+                    }
+                }
+
+                // 提取cookies
+                let cookies = null;
+                const cookieMatch = curlCommand.match(/(?:--cookie|-b)\s+['"]([^'"]+)['"]/);
+                if (cookieMatch) {
+                    cookies = cookieMatch[1];
+                }
+
+                // 提取data - 处理多种格式
+                let data = null;
+                const dataMatch = curlCommand.match(/(?:-d|--data)\s+['"]([^'"]+)['"]/);
+                if (dataMatch) {
+                    data = dataMatch[1];
+                }
+
+                // 生成Python代码
+                pythonCode += `# 请求配置\nurl = '${url}'\n`;
+                
+                if (Object.keys(headers).length > 0) {
+                    pythonCode += `\nheaders = ${JSON.stringify(headers, null, 4)}\n`;
+                }
+
+                if (cookies) {
+                    pythonCode += `\n# Cookie处理\ncookies = '${cookies}'\ncookie_dict = {pair.split('=')[0]: pair.split('=')[1] for pair in cookies.split('; ') if '=' in pair}\n`;
+                }
+
+                if (data) {
+                    pythonCode += `\n# 请求数据\ndata = '${data}'\n`;
+                    pythonCode += `# 如果是JSON数据，可转换为:\n# data = json.loads(data)\n`;
+                }
+
+                pythonCode += `\n# 发送请求\nresponse = requests.${method.toLowerCase()}(\n`;
+                pythonCode += `    url,\n`;
+                if (Object.keys(headers).length > 0) {
+                    pythonCode += `    headers=headers,\n`;
+                }
+                if (cookies) {
+                    pythonCode += `    cookies=cookie_dict,\n`;
+                }
+                if (data) {
+                    pythonCode += `    data=data,\n`;
+                }
+                pythonCode += `    timeout=10\n`;
+                pythonCode += `)\n\n`;
+                pythonCode += `# 处理响应\nprint(f'状态码: {response.status_code}')\nprint(f'响应内容:\\n{response.text}')\n`;
+
+                const formattedDiv = document.getElementById('formatted');
+                formattedDiv.innerHTML = `<pre style="background-color: #f5f5f5; padding: 15px; border-radius: 8px; overflow-x: auto;">${escapeHtml(pythonCode)}</pre>`;
+                
+                showToast('✓ Curl 已成功转换为 Python！');
+            } catch (error) {
+                showToast('✗ 转换失败: ' + error.message, 'error');
             }
-            if (data) {
-                pythonCode += ', data=data';
-            }
-            pythonCode += ')\n';
-            pythonCode += 'print(response.text)\n';
-            
-            document.getElementById('formatted').innerHTML = `<pre>${pythonCode}</pre>`;
-        });
+        }
+
+        // HTML转义辅助函数
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // 页面加载时初始化统计
+        updateStats();
     </script>
-    <button id="copyButton" onclick="copyPythonCode()" style="padding: 10px 20px; font-size: 16px; color: #fff; background-color: #007bff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">复制代码</button>
 </body>
 </html>
-<script>
-    function copyPythonCode() {
-        // 获取格式化后的代码内容
-        const formattedDiv = document.getElementById('formatted');
-        const pythonCode = formattedDiv.querySelector('pre').textContent;
-        
-        // 创建临时textarea元素
-        const textarea = document.createElement('textarea');
-        textarea.value = pythonCode;
-        document.body.appendChild(textarea);
-        
-        // 选择并复制文本
-        textarea.select();
-        document.execCommand('copy');
-        
-        // 移除临时元素
-        document.body.removeChild(textarea);
-        
-        // 提示用户已复制
-        alert('Python代码已复制到剪贴板!');
-    }
-
-    // 在生成Python代码后添加复制按钮
-    document.getElementById('curlToPythonButton').addEventListener('click', () => {
-        // 等待代码生成完成后添加复制按钮
-        setTimeout(() => {
-            const formattedDiv = document.getElementById('formatted');
-            if(!document.getElementById('copyButton')) {
-                const copyButton = document.createElement('button');
-                copyButton.id = 'copyButton';
-                copyButton.textContent = '复制代码';
-                copyButton.style.marginTop = '10px';
-                copyButton.onclick = copyPythonCode;
-                formattedDiv.appendChild(copyButton);
-            }
-        }, 100);
-    });
-</script>
