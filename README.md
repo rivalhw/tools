@@ -27,6 +27,12 @@
 | **save2onepage.py** | **图片文件夹转 Word 文档**：输入包含以 `image_` 开头图片的文件夹路径，按文件名中的序号排序，将每张图片插入 Word 文档，每图一页、宽度 6 英寸，页脚居中显示页码，最终保存为与文件夹同名的 `.docx` 文件到上级目录。依赖：`python-docx`、`Pillow`。 |
 | **webp2png.py** | **WebP 转 PNG**：遍历指定目录（脚本内需修改 `input_directory` 变量）下所有 `.webp` 文件，转换为 `.png` 并保存在同一目录。依赖：`Pillow`。 |
 
+### 文本处理
+
+| 文件 | 功能描述 |
+|------|----------|
+| **remove_obfuscation.py** | **移除混淆内容**：输入文本文件路径，自动查找并删除文件中从 `<!-- obfuscation begins here -->` 到 `<!-- obfuscation ends here -->` 之间的所有内容（包括标记本身），支持跨行匹配，处理完成后直接覆盖原文件。自动处理 UTF-8 和 GBK 编码，显示删除的字符数统计。无需额外依赖（仅使用 Python 标准库）。 |
+
 ### 在线工具
 
 | 文件 | 功能描述 |
@@ -57,3 +63,4 @@
 - **imagesbatch.py / imagesbatchmark.py**：运行后输入待处理图片所在文件夹路径。
 - **save2onepage.py**：适用于由 `getWechatandsave2pics.py` 等生成的 `image_1.jpg`、`image_2.jpg` 等命名规则的文件夹。
 - **webp2png.py**：使用前在脚本中修改 `input_directory` 为实际要转换的目录路径。
+- **remove_obfuscation.py**：运行后输入要处理的文件路径（支持相对路径和绝对路径），程序会自动删除混淆标记之间的内容并保存。
