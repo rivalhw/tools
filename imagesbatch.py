@@ -1,11 +1,92 @@
 import os
-from PIL import Image, ExifTags, ImageFont
+from PIL import Image, ExifTags, ImageFont, ImageDraw
 from datetime import datetime
 import concurrent.futures
 import time
-from PIL import ImageDraw
 
-# 定义处理图片的函数
+# 相框与水印样式参数（可在此统一调整）
+FRAME_INNER_RATIO = 0.012   # 内白边占短边比例
+FRAME_OUTER_RATIO = 0.006   # 外灰边占短边比例
+FRAME_FEATHER_RATIO = 0.5   # 羽化宽度占内边比例（0~1，越大过渡越宽）
+WATERMARK_TEXT = "@rivalhw"
+WATERMARK_FONT_SIZE_RATIO = 0.048   # 水印字号
+WATERMARK_MARGIN_RATIO = 0.024      # 与边缘距离
+WATERMARK_LETTER_SPACING = 2        # 字间距（像素），0 为无
+# 立体质感：柔和投影层数及偏移（层数多更柔和）
+WATERMARK_SOFT_SHADOW_STEPS = [(3, 3), (2, 2), (1, 1)]  # (dx, dy) 从远到近
+
+def _load_font(size):
+    """立体水印用略粗字体更出效果，优先粗体/半粗"""
+    candidates = (
+        "C:\\Windows\\Fonts\\segoeuib.ttf",  # Segoe UI Bold
+        "C:\\Windows\\Fonts\\arialbd.ttf",   # Arial Bold
+        "C:\\Windows\\Fonts\\segoeui.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "segoeuib.ttf", "arialbd.ttf", "arial.ttf",
+        "DejaVuSans-Bold.ttf", "DejaVuSans.ttf",
+    )
+    for name in candidates:
+        try:
+            return ImageFont.truetype(name, size)
+        except (OSError, IOError):
+            continue
+    return ImageFont.load_default()
+
+
+def _make_feather_mask(width, height, feather_width):
+    """生成边缘羽化蒙版：中心不透明，四边在 feather_width 内线性过渡到透明。"""
+    if feather_width <= 0:
+        return Image.new('L', (width, height), 255)
+    mask = Image.new('L', (width, height), 255)
+    pix = mask.load()
+    # 只遍历边缘带，减少大图时的计算量
+    for y in range(height):
+        for x in range(width):
+            d = min(x, width - 1 - x, y, height - 1 - y)
+            if d < feather_width:
+                pix[x, y] = min(255, int(255 * d / feather_width))
+    return mask
+
+
+def _draw_text_layer(draw, x, y, text, font, fill, letter_spacing=0):
+    """画一层文字，支持字间距"""
+    if letter_spacing <= 0:
+        draw.text((x, y), text, font=font, fill=fill)
+        return
+    cx = x
+    for ch in text:
+        draw.text((cx, y), ch, font=font, fill=fill)
+        bbox = draw.textbbox((0, 0), ch, font=font)
+        cx += bbox[2] - bbox[0] + letter_spacing
+
+
+def _draw_watermark_3d(draw, x, y, text, font, letter_spacing=0,
+                      fill=(132, 132, 130),
+                      outline=(62, 62, 60),
+                      soft_shadow_steps=None,
+                      bevel_highlight=(228, 228, 226),
+                      bevel_shadow=(72, 72, 70)):
+    """立体质感水印：柔和投影 + 深色描边 + 斜面高光/阴影，无底色"""
+    if soft_shadow_steps is None:
+        soft_shadow_steps = WATERMARK_SOFT_SHADOW_STEPS
+    n = len(soft_shadow_steps)
+    # 由远到近的投影色（远暗近浅）
+    shadow_colors = [(50 + i * 22, 50 + i * 22, 48 + i * 22) for i in range(n)]
+    for (dx, dy), color in zip(soft_shadow_steps, shadow_colors):
+        _draw_text_layer(draw, x + dx, y + dy, text, font, color, letter_spacing)
+    # 深色描边，让轮廓清晰
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx != 0 or dy != 0:
+                _draw_text_layer(draw, x + dx, y + dy, text, font, outline, letter_spacing)
+    # 斜面阴影（右下）
+    _draw_text_layer(draw, x + 1, y + 1, text, font, bevel_shadow, letter_spacing)
+    # 主色
+    _draw_text_layer(draw, x, y, text, font, fill, letter_spacing)
+    # 斜面高光（左上）
+    _draw_text_layer(draw, x - 1, y - 1, text, font, bevel_highlight, letter_spacing)
+
+
 def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024, month='', day='', counter=1):
     try:
         original_size = os.path.getsize(file_path) / (1024 * 1024)  # 转换为MB
@@ -13,7 +94,17 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
         print(f"正在处理图片 {filename} 中，原图文件名 {filename}，大小 {original_size:.2f}M")
 
         with Image.open(file_path) as img:
-            # 处理EXIF元数据，确保图像方向正确
+            # 统一转为 RGB，避免 RGBA/P 等模式导致粘贴或保存异常
+            if img.mode in ("RGBA", "P"):
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
+                img = background
+            elif img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # 处理 EXIF 方向
             try:
                 for orientation in ExifTags.TAGS.keys():
                     if ExifTags.TAGS[orientation] == 'Orientation':
@@ -30,58 +121,74 @@ def process_image(file_path, output_folder, max_width=1280, max_size=1000 * 1024
             except (AttributeError, KeyError, IndexError):
                 pass
 
-            # 获取原始尺寸
             original_width, original_height = img.size
-            # 如果宽度超过最大宽度，则按比例缩放
             if original_width > max_width:
                 scale_factor = max_width / original_width
                 new_width = max_width
                 new_height = int(original_height * scale_factor)
                 img = img.resize((new_width, new_height), Image.LANCZOS)
 
-            # 添加相框边框效果 - 改进版
-            border_width = int(min(img.size) * 0.008)  # 边框宽度为0.8%，更加细腻
-            border_color = (255, 255, 255)  # 白色边框
-            
-            # 创建新的图像，比原图大一圈边框
-            new_size = (img.width + 2*border_width, img.height + 2*border_width)
-            framed_img = Image.new('RGB', new_size, border_color)
-            
-            # 在新图像中央粘贴原图
-            framed_img.paste(img, (border_width, border_width))
-            
-            # 创建高质量的边框：细线形成更精致的效果
+            short_side = min(img.size)
+            inner_border = max(8, int(short_side * FRAME_INNER_RATIO))   # 内白边
+            outer_border = max(2, int(short_side * FRAME_OUTER_RATIO))   # 外灰边
+            total_border = inner_border + outer_border
+
+            # 暖白内边 + 浅灰外边，更柔和
+            frame_color = (250, 250, 248)
+            outer_color = (228, 228, 225)
+            inner_line_color = (215, 215, 212)
+
+            w, h = img.width + 2 * total_border, img.height + 2 * total_border
+            framed_img = Image.new('RGB', (w, h), outer_color)
+            inner_rect = [outer_border, outer_border, w - 1 - outer_border, h - 1 - outer_border]
+            draw_fill = ImageDraw.Draw(framed_img)
+            draw_fill.rectangle(inner_rect, fill=frame_color)
+
+            # 羽化：图片边缘与相框柔和过渡
+            feather_width = max(2, int(inner_border * FRAME_FEATHER_RATIO))
+            alpha_mask = _make_feather_mask(img.width, img.height, feather_width)
+            img_rgba = img.convert('RGBA')
+            img_rgba.putalpha(alpha_mask)
+            framed_img.paste(img_rgba, (total_border, total_border))
+
             draw = ImageDraw.Draw(framed_img)
-            # 外层细灰色边框
-            draw.rectangle([0, 0, new_size[0]-1, new_size[1]-1], outline=(210, 210, 210), width=1)
-            # 内层超细灰色边框
-            draw.rectangle([border_width-1, border_width-1, new_size[0]-border_width, new_size[1]-border_width], 
-                          outline=(190, 190, 190), width=1)
-            
-            # 添加水印 - 浅色文字 "@rivalhw" 在右下角
-            watermark_text = "@rivalhw"
-            # 计算字体大小（相对于图片宽度）
-            font_size = int(min(framed_img.size) * 0.04)  # 字体大小为图片较小边的4%
-            try:
-                # 尝试使用系统字体，如果失败则使用默认字体
-                font = ImageFont.truetype("arial.ttf", font_size)
-            except:
-                font = ImageFont.load_default()
-            
-            # 获取文字大小以计算位置
-            bbox = draw.textbbox((0, 0), watermark_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            # 计算水印位置（右下角，留出一定距离）
-            margin = border_width + 10
-            x = new_size[0] - text_width - margin
-            y = new_size[1] - text_height - margin
-            
-            # 绘制半透明水印（使用较浅的灰色）
-            watermark_color = (200, 200, 200)  # 浅灰色
-            draw.text((x, y), watermark_text, fill=watermark_color, font=font)
-            
+            # 外框线
+            draw.rectangle([0, 0, w - 1, h - 1], outline=outer_color, width=outer_border)
+            draw.rectangle(inner_rect, outline=inner_line_color, width=1)
+            # 内缘细线（相框与图片交界，羽化后略柔和）
+            draw.rectangle([
+                total_border, total_border,
+                w - 1 - total_border, h - 1 - total_border
+            ], outline=inner_line_color, width=1)
+
+            # 水印：立体质感（柔和投影 + 斜面高光/阴影），无底色
+            font_size = max(18, int(short_side * WATERMARK_FONT_SIZE_RATIO))
+            font = _load_font(font_size)
+            spacing = WATERMARK_LETTER_SPACING
+            if spacing <= 0:
+                bbox = draw.textbbox((0, 0), WATERMARK_TEXT, font=font)
+                text_w = bbox[2] - bbox[0]
+                text_h = bbox[3] - bbox[1]
+            else:
+                text_h = 0
+                text_w = 0
+                for ch in WATERMARK_TEXT:
+                    bbox = draw.textbbox((0, 0), ch, font=font)
+                    text_w += bbox[2] - bbox[0]
+                    text_h = max(text_h, bbox[3] - bbox[1])
+                text_w += (len(WATERMARK_TEXT) - 1) * spacing
+            margin = max(16, int(short_side * WATERMARK_MARGIN_RATIO))
+            wx = w - text_w - total_border - margin
+            wy = h - text_h - total_border - margin
+            _draw_watermark_3d(
+                draw, wx, wy, WATERMARK_TEXT, font,
+                letter_spacing=spacing,
+                fill=(128, 128, 126),
+                outline=(58, 58, 56),
+                bevel_highlight=(240, 240, 238),
+                bevel_shadow=(68, 68, 66),
+            )
+
             img = framed_img
 
             # 若源文件名以 IMG 开头则保持原文件名，否则按日期+序号命名
